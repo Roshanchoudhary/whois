@@ -1,4 +1,4 @@
-# Whois Tools
+# Whois by PDFKaj
 
 A fast, responsive, multilingual domain and internet toolkit designed for Cloudflare Pages.
 
@@ -19,7 +19,7 @@ A fast, responsive, multilingual domain and internet toolkit designed for Cloudf
 6. Save and deploy. Future commits to `main` can trigger automatic deployments.
 
 ## Before launch
-- Confirm the actual Pages hostname or connect your custom domain. The SEO canonical and sitemap currently use `https://whois.pages.dev/`; update these if your actual hostname differs.
+- Confirm the actual Pages hostname or connect your custom domain. The SEO canonical and sitemap are configured for `https://whois.pdfkaj.com/`; verify the custom domain is active before launch.
 - Test the three lookup tools in production. Public providers may rate-limit requests, and their availability can change.
 - Verify the site and submit the sitemap in Google Search Console.
 - Add substantial, original tool-specific guides and translated content pages before expanding SEO. Language toggles alone do not create separate indexable pages or guarantee rankings.
