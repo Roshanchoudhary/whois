@@ -84,3 +84,42 @@ body.light-theme .diagnostics-report{background:#fff}
  .tab{font-size:9px}
  .examples{gap:5px}
 }
+
+
+/* Reliable theme palette: recolour every major surface, not only body text */
+html.light-theme,html.light-theme body,body.light-theme{--bg:#f4f6fb;--panel:#ffffff;--ink:#172033;--muted:#5f6c82;--line:#17203318;background:#f4f6fb;color:#172033;color-scheme:light}
+html.light-theme .topline,body.light-theme .topline{background:#e9edf6;color:#526078;border-color:#dce2ee}
+html.light-theme .header,body.light-theme .header{background:#f8f9fd}
+html.light-theme .header nav,body.light-theme .header nav{color:#56627a}
+html.light-theme .hero,body.light-theme .hero{background:radial-gradient(ellipse at 50% 0%,#e5eaff 0%,#f0efff 36%,#f4f6fb 78%)}
+html.light-theme .orb,body.light-theme .orb{border-color:#7463d515}
+html.light-theme .hero-copy,body.light-theme .hero-copy{color:#596780}
+html.light-theme .lookup-card,body.light-theme .lookup-card{background:#fff;border-color:#dce2ee;box-shadow:0 22px 55px #25365b12}
+html.light-theme .tab,body.light-theme .tab{color:#65718a}
+html.light-theme .tab.active,body.light-theme .tab.active{color:#4d3bb2;background:#efedff;box-shadow:inset 0 0 0 1px #d8d0ff}
+html.light-theme #lookup-input,body.light-theme #lookup-input{color:#182239}
+html.light-theme #lookup-input::placeholder,body.light-theme #lookup-input::placeholder{color:#8a95a9}
+html.light-theme .search-foot,body.light-theme .search-foot{color:#69758c;border-color:#e7eaf2}
+html.light-theme .trust,body.light-theme .trust{color:#69758c}
+html.light-theme .trust-icon,body.light-theme .trust-icon{background:#e8e6ff;color:#5d4ac4}
+html.light-theme .metrics,body.light-theme .metrics{border-color:#dfe4ef}
+html.light-theme .tool-card,html.light-theme .tool-card.featured,body.light-theme .tool-card,body.light-theme .tool-card.featured{background:#fff;border-color:#e0e5f0;box-shadow:0 8px 24px #25365b08}
+html.light-theme .tool-card p,body.light-theme .tool-card p{color:#66738a}
+html.light-theme .how,body.light-theme .how{background:linear-gradient(120deg,#eceffc,#f7f8fc);border-color:#e0e5f0}
+html.light-theme .how p,html.light-theme .how li,body.light-theme .how p,body.light-theme .how li{color:#526078}
+html.light-theme .preview,body.light-theme .preview{background:#fff;border-color:#dce2ee;box-shadow:0 20px 45px #25365b10}
+html.light-theme .preview-row,html.light-theme .preview-title,body.light-theme .preview-row,body.light-theme .preview-title{border-color:#e7eaf2}
+html.light-theme .preview-row span,html.light-theme .preview-title small,html.light-theme .preview-note,body.light-theme .preview-row span,body.light-theme .preview-title small,body.light-theme .preview-note{color:#6b7890}
+html.light-theme .faq-list,html.light-theme details,body.light-theme .faq-list,body.light-theme details{border-color:#e0e5f0}
+html.light-theme details p,body.light-theme details p{color:#596780}
+html.light-theme .bottom-cta,body.light-theme .bottom-cta{background:radial-gradient(ellipse at 50% 100%,#dedaff55,transparent 65%),#edf0fa;border-color:#e0e5f0}
+html.light-theme .bottom-cta p,body.light-theme .bottom-cta p{color:#596780}
+html.light-theme .about>p,body.light-theme .about>p{color:#596780}
+html.light-theme .footer,html.light-theme .footer-main,html.light-theme .footer-bottom,body.light-theme .footer,body.light-theme .footer-main,body.light-theme .footer-bottom{border-color:#e0e5f0}
+html.light-theme .footer-main>p,html.light-theme .footer-links,html.light-theme .footer-bottom,body.light-theme .footer-main>p,body.light-theme .footer-links,body.light-theme .footer-bottom{color:#65718a}
+html.light-theme .theme-toggle,body.light-theme .theme-toggle{background:#fff;color:#4b3ca9;border-color:#dcdff0}
+html.light-theme .diagnostics-launch,html.light-theme .history-panel,body.light-theme .diagnostics-launch,body.light-theme .history-panel{border-color:#e4e8f1}
+html.light-theme .diagnostics-launch-copy p,html.light-theme .history-note,html.light-theme .history-empty,body.light-theme .diagnostics-launch-copy p,body.light-theme .history-note,body.light-theme .history-empty{color:#66738a}
+html.light-theme .result,body.light-theme .result{background:#fff;color:#172033;border-color:#dce2ee}
+html.light-theme .diagnostics-report,html.light-theme .diagnostic-check,body.light-theme .diagnostics-report,body.light-theme .diagnostic-check{background:#fff;border-color:#e0e5f0}
+html.light-theme .diagnostic-check p,body.light-theme .diagnostic-check p{color:#47546b}
