@@ -32,3 +32,46 @@ $('#clear-history')?.addEventListener('click',()=>{try{localStorage.removeItem(H
 try{setTheme(localStorage.getItem(THEME_KEY)||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'))}catch{setTheme('dark')}
 drawHistory();
 applyLang(new URLSearchParams(location.search).get('lang')||'en');
+
+/* IntoDNS-style DNS diagnostics. These are recursive-resolver checks, not authoritative tests. */
+async function diagQuery(name,type){return getJson('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(name)+'&type='+encodeURIComponent(type),{headers:{Accept:'application/dns-json'}})}
+function diagAnswers(x){return (x&&x.Answer||[]).map(a=>String(a.data||'').trim()).filter(Boolean)}
+function diagItem(status,title,detail,fix=''){return {status,title,detail,fix}}
+async function runDnsDiagnostics(){
+ const domain=normalizeDomain($('#lookup-input').value),button=$('#run-diagnostics'),report=$('#diagnostics-report');
+ if(!validHost(domain)){report.hidden=false;report.innerHTML='<p class="result-error">Enter a valid domain in the lookup field first.</p>';return}
+ button.disabled=true;button.textContent='Checking DNS…';report.hidden=false;report.innerHTML='<div class="loading"><span class="spinner"></span>Checking public DNS for '+esc(domain)+'…</div>';
+ const types=['NS','SOA','A','AAAA','MX','TXT','CAA','DS','DNSKEY'];
+ const pairs=await Promise.all(types.map(async t=>{try{return [t,await diagQuery(domain,t)]}catch(e){return [t,{Answer:[],Status:-1,error:String(e.message||e)}]}}));
+ const raw=Object.fromEntries(pairs),ans=Object.fromEntries(types.map(t=>[t,diagAnswers(raw[t])]));
+ const ns=ans.NS.map(x=>x.replace(/\.$/,'')),mx=ans.MX,txt=ans.TXT.map(x=>x.replace(/^"|"$/g,'')),soa=ans.SOA;
+ const spf=txt.filter(x=>/^v=spf1(?:\s|$)/i.test(x)),caa=ans.CAA;
+ let dmarc=[];try{dmarc=diagAnswers(await diagQuery('_dmarc.'+domain,'TXT')).map(x=>x.replace(/^"|"$/g,'')).filter(x=>/^v=DMARC1(?:;|\s|$)/i.test(x))}catch{}
+ const checks=[];
+ checks.push(ns.length>=2?diagItem('PASS','Nameservers',ns.length+' NS answer(s): '+ns.join(', ')):ns.length===1?diagItem('WARNING','Nameserver redundancy','Only one NS answer was returned. Multiple independent nameservers are recommended.','Configure at least two authoritative nameservers.'):diagItem('ERROR','Nameservers','No NS answer was returned by the public recursive resolver.','Check registrar delegation and your DNS zone.'));
+ checks.push(soa.length?diagItem('PASS','SOA record','SOA answer found: '+soa.join(' | ')):diagItem('ERROR','SOA record','No SOA answer was returned.','Check that the DNS zone exists and is correctly configured.'));
+ checks.push(ans.A.length||ans.AAAA.length?diagItem('PASS','A / AAAA records','A: '+ans.A.length+' · AAAA: '+ans.AAAA.length):diagItem('WARNING','A / AAAA records','No apex A or AAAA answer. This may be intentional.','Add an A/AAAA record if the root domain should resolve.'));
+ checks.push(mx.length?diagItem('PASS','MX records',mx.length+' MX answer(s): '+mx.join(' | ')):diagItem('WARNING','MX records','No MX answer. This is fine if the domain does not receive email.','Publish valid MX records if email is expected.'));
+ checks.push(spf.length===1?diagItem('PASS','SPF', 'One SPF record: '+spf[0]):spf.length>1?diagItem('ERROR','SPF','Multiple SPF records were found and can cause SPF permerror.','Merge the policy into one v=spf1 TXT record.'):diagItem('WARNING','SPF','No SPF policy detected in apex TXT answers.','Publish one SPF record if this domain sends email.'));
+ checks.push(dmarc.length===1?diagItem('PASS','DMARC','DMARC record: '+dmarc[0]):dmarc.length>1?diagItem('ERROR','DMARC','Multiple DMARC records detected.','Keep one valid TXT record at _dmarc.'+domain+'.'):diagItem('WARNING','DMARC','No valid DMARC policy detected at _dmarc.'+domain+'.','Consider publishing a DMARC policy and reviewing aggregate reports.'));
+ checks.push(caa.length?diagItem('PASS','CAA',caa.join(' | ')):diagItem('INFO','CAA','No CAA record found. CAA is optional; this is not automatically an error.','Consider restricting certificate issuance with CAA records.'));
+ checks.push(ans.DS.length||ans.DNSKEY.length?diagItem('INFO','DNSSEC signals','DS answers: '+ans.DS.length+' · DNSKEY answers: '+ans.DNSKEY.length+'. Presence alone does not prove the chain validates.','Verify signing and DS/DNSKEY matching with registrar and DNS provider.'):diagItem('WARNING','DNSSEC signals','No DS or DNSKEY answers returned. DNSSEC may be disabled; this recursive check is not a full validation.','If desired, enable DNSSEC and publish the matching DS at registrar.'));
+ const serial=soa[0]&&soa[0].split(/\s+/)[2];
+ checks.push(serial?diagItem('INFO','SOA serial','Reported serial: '+serial+'. Cross-server serial comparison was not performed.'):diagItem('INFO','SOA serial','Could not extract an SOA serial from this response.'));
+ const nsHostResults=await Promise.all(ns.slice(0,8).map(async host=>{try{const [a,aaaa]=await Promise.all([diagQuery(host,'A').catch(()=>({Answer:[]})),diagQuery(host,'AAAA').catch(()=>({Answer:[]}))]);return {host,ok:diagAnswers(a).length+diagAnswers(aaaa).length>0}}catch{return {host,ok:false}}}));
+ const unresolved=nsHostResults.filter(x=>!x.ok);
+ checks.push(ns.length?(unresolved.length?diagItem('WARNING','Nameserver hostname resolution','No A/AAAA answer for: '+unresolved.map(x=>x.host).join(', ')+'.','Check nameserver hostnames and registrar glue records.'):diagItem('PASS','Nameserver hostname resolution','Address answers found for listed nameserver hostnames. Parent glue is not verified.')):diagItem('INFO','Nameserver hostname resolution','Skipped because no NS answer was returned.'));
+ const mxHosts=mx.map(x=>x.replace(/^\d+\s+/,'').replace(/\.$/,'')).filter(Boolean);
+ const mxResults=await Promise.all(mxHosts.slice(0,8).map(async host=>{try{const [a,aaaa]=await Promise.all([diagQuery(host,'A').catch(()=>({Answer:[]})),diagQuery(host,'AAAA').catch(()=>({Answer:[]}))]);return {host,ok:diagAnswers(a).length+diagAnswers(aaaa).length>0}}catch{return {host,ok:false}}}));
+ const badMx=mxResults.filter(x=>!x.ok);
+ checks.push(mxHosts.length?(badMx.length?diagItem('WARNING','MX target resolution','No A/AAAA answer for: '+badMx.map(x=>x.host).join(', ')+'.','Verify MX targets resolve to addresses and are not CNAME aliases.'):diagItem('PASS','MX target resolution','Address answers found for returned MX targets.')):diagItem('INFO','MX target resolution','Skipped because no MX records were returned.'));
+ const selectors=['default','google','selector1','selector2','k1'];
+ const dkim=await Promise.all(selectors.map(async s=>{try{return {s,found:diagAnswers(await diagQuery(s+'._domainkey.'+domain,'TXT')).some(x=>/v=DKIM1|p=/i.test(x))}}catch{return {s,found:false}}}));
+ const found=dkim.filter(x=>x.found).map(x=>x.s);
+ checks.push(found.length?diagItem('INFO','DKIM common selectors','TXT key-like data found for: '+found.join(', ')+'. This is not exhaustive.'):diagItem('INFO','DKIM common selectors','No key found for common selectors ('+selectors.join(', ')+'). Custom selectors may be used; this does not prove DKIM is absent.','Check your mail provider’s selector or inspect an actual message header.'));
+ const count=Object.fromEntries(['PASS','WARNING','ERROR','INFO'].map(s=>[s,checks.filter(c=>c.status===s).length])),stamp=new Date().toLocaleString();
+ report.innerHTML='<div class="diagnostics-report-head"><div><h3>DNS health report: '+esc(domain)+'</h3><p>Checked '+esc(stamp)+' · Cloudflare recursive DNS</p></div><button type="button" id="copy-diagnostics">Copy report</button></div><div class="diagnostics-summary"><span class="diag-pass">'+count.PASS+' Pass</span><span class="diag-warn">'+count.WARNING+' Warning</span><span class="diag-error">'+count.ERROR+' Error</span><span class="diag-info">'+count.INFO+' Info</span></div><div class="diagnostics-checks">'+checks.map(c=>'<article class="diagnostic-check"><div class="diagnostic-check-top"><span class="diag-status diag-'+c.status.toLowerCase()+'">'+c.status+'</span><strong>'+esc(c.title)+'</strong></div><p>'+esc(c.detail)+'</p>'+(c.fix?'<small><b>Suggested fix:</b> '+esc(c.fix)+'</small>':'')+'</article>').join('')+'</div><p class="diagnostics-disclaimer">Best-effort browser report, not a full authoritative IntoDNS clone. Recursive DNS cannot reliably verify parent-zone delegation, parent glue, every authoritative server’s consistency, or the full DNSSEC chain. DKIM checks only common selectors. No answer may be intentional.</p>';
+ $('#copy-diagnostics')?.addEventListener('click',async()=>{const out='DNS health report for '+domain+'\nChecked: '+stamp+'\n\n'+checks.map(c=>'['+c.status+'] '+c.title+'\n'+c.detail+(c.fix?'\nSuggested fix: '+c.fix:'')).join('\n\n');try{await navigator.clipboard.writeText(out);$('#copy-diagnostics').textContent='Copied'}catch{$('#copy-diagnostics').textContent='Copy unavailable'}});
+ button.disabled=false;button.textContent='Run diagnostics again ↻';
+}
+$('#run-diagnostics')?.addEventListener('click',runDnsDiagnostics);
